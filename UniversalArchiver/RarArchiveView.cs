@@ -17,13 +17,14 @@ using NUnrar.Common;
 
 namespace UniversalArchiver
 {
-    public partial class RarArchiveView : Form
+    public partial class RarArchiveView : Form, IArchiver
     {
         private ImageList iconList;
         private string currentArchive;
         private string currentFolder = "\0";
         private int lastSortedColumn = -1;
         private int folderLevel;
+        private int tempFolderNum;
 
         // DragDrop variables
         private Point startDragDropPoint;
@@ -51,6 +52,9 @@ namespace UniversalArchiver
             folderLevelTip.SetToolTip(this.pbUpALevel, "Enter parent folder");
 
             this.currentArchive = file;
+            Globals.LastFile = file;
+
+            this.tempFolderNum = Program.RequestTempNum();
 
             this.Resize += this.RarArchiveView_Resize;
             this.Load += this.OnLoad;
@@ -73,20 +77,28 @@ namespace UniversalArchiver
 
                 List<string> filesList = new List<string>();
 
-                foreach (ListViewItem selectedItem in this.lvFileList.SelectedItems)
+                if (Directory.GetFileSystemEntries(Program.TempPath(this.tempFolderNum)).Length == this.lvFileList.SelectedItems.Count)
                 {
+                    filesList = Directory.GetFileSystemEntries(Program.TempPath(this.tempFolderNum)).ToList();
+                }
 
-                    if ((selectedItem.Tag as RarArchiveEntry).IsDirectory)
+                else
+                {
+                    foreach (ListViewItem selectedItem in this.lvFileList.SelectedItems)
                     {
-                        (selectedItem.Tag as RarArchiveEntry).WriteToDirectory(Path.Combine(Program.TempPath, (selectedItem.Tag as RarArchiveEntry).FilePath.Replace(this.currentFolder, string.Empty)));
 
-                        filesList.Add(Path.Combine(Program.TempPath, (selectedItem.Tag as RarArchiveEntry).FilePath.Replace(this.currentFolder, string.Empty)));
-                    }
-                    else
-                    {
-                        (selectedItem.Tag as RarArchiveEntry).WriteToFile(Path.Combine(Program.TempPath, (selectedItem.Tag as RarArchiveEntry).FilePath.Replace(this.currentFolder, string.Empty)));
+                        if ((selectedItem.Tag as RarArchiveEntry).IsDirectory)
+                        {
+                            RarArchiveEntry directoryEntry = selectedItem.Tag as RarArchiveEntry;
 
-                        filesList.Add(Path.Combine(Program.TempPath, (selectedItem.Tag as RarArchiveEntry).FilePath.Replace(this.currentFolder, string.Empty)));
+                            this.RecursiveExtract(Path.Combine(Program.TempPath(this.tempFolderNum), directoryEntry.FilePath.Replace(this.currentFolder, string.Empty)), directoryEntry.FilePath);
+                        }
+                        else
+                        {
+                            (selectedItem.Tag as RarArchiveEntry).WriteToFile(Path.Combine(Program.TempPath(this.tempFolderNum), (selectedItem.Tag as RarArchiveEntry).FilePath.Replace(this.currentFolder, string.Empty)));
+
+                            filesList.Add(Path.Combine(Program.TempPath(this.tempFolderNum), (selectedItem.Tag as RarArchiveEntry).FilePath.Replace(this.currentFolder, string.Empty)));
+                        }
                     }
                 }
 
@@ -99,6 +111,9 @@ namespace UniversalArchiver
         private void LvFileList_MouseDown(object sender, MouseEventArgs e)
         {
             this.startDragDropPoint = e.Location;
+
+            Directory.Delete(Program.TempPath(this.tempFolderNum), true);
+            Directory.CreateDirectory(Program.TempPath(this.tempFolderNum));
         }
 
         private void RarArchiveView_Closed(object sender, EventArgs e)
@@ -126,8 +141,15 @@ namespace UniversalArchiver
                 }
                 else
                 {
-                    (this.lvFileList.SelectedItems[0].Tag as RarArchiveEntry).WriteToFile(Path.Combine(Program.TempPath, Path.GetFileName((this.lvFileList.SelectedItems[0].Tag as RarArchiveEntry).FilePath)));
-                    Process.Start(Path.Combine(Program.TempPath, Path.GetFileName((this.lvFileList.SelectedItems[0].Tag as RarArchiveEntry).FilePath)));
+                    if ((this.lvFileList.SelectedItems[0].Tag as RarArchiveEntry).FilePath.EndsWith("rar"))
+                    {
+                        (this.lvFileList.SelectedItems[0].Tag as RarArchiveEntry).WriteToFile(Path.Combine(Program.TempPath(this.tempFolderNum), Path.GetFileName((this.lvFileList.SelectedItems[0].Tag as RarArchiveEntry).FilePath)));
+                        new RarArchiveView(Path.Combine(Program.TempPath(this.tempFolderNum), Path.GetFileName((this.lvFileList.SelectedItems[0].Tag as RarArchiveEntry).FilePath))).Show();
+                        return;
+                    }
+
+                    (this.lvFileList.SelectedItems[0].Tag as RarArchiveEntry).WriteToFile(Path.Combine(Program.TempPath(this.tempFolderNum), Path.GetFileName((this.lvFileList.SelectedItems[0].Tag as RarArchiveEntry).FilePath)));
+                    Process.Start(Path.Combine(Program.TempPath(this.tempFolderNum), Path.GetFileName((this.lvFileList.SelectedItems[0].Tag as RarArchiveEntry).FilePath)));
                 }
             }
         }
@@ -151,40 +173,90 @@ namespace UniversalArchiver
 
         private void OnLoad(object sender, EventArgs e)
         {
+            this.TopMost = true;
+            this.TopMost = false;
+
             this.lvFileList.BeginUpdate();
             this.lvFileList.Items.Clear();
             this.lvFileList.EndUpdate();
 
-            switch (Path.GetExtension(this.currentArchive))
+            try
             {
-                case ".rar":
-                    {
-                        RarArchive rar = RarArchive.Open(new FileInfo(this.currentArchive), RarOptions.GiveDirectoryEntries);
-                        foreach (RarArchiveEntry entry in rar.Entries)
+                switch (Path.GetExtension(this.currentArchive))
+                {
+                    case ".rar":
                         {
-                            if (entry.IsDirectory && !entry.FilePath.Contains("\\"))
+                            RarArchive rar = RarArchive.Open(new FileInfo(this.currentArchive), RarOptions.GiveDirectoryEntries);
+                            foreach (RarArchiveEntry entry in rar.Entries)
                             {
-                                this.AddRarFolder(entry);
-                                Console.Out.WriteLine(entry.FilePath);
-                            }
+                                if (entry.IsDirectory && !entry.FilePath.Contains("\\"))
+                                {
+                                    this.AddRarFolder(entry);
+                                    Console.Out.WriteLine(entry.FilePath);
+                                }
 
-                            else if (!entry.FilePath.Contains("\\"))
-                            {
-                                this.AddRarFile(entry);
+                                else if (!entry.FilePath.Contains("\\"))
+                                {
+                                    this.AddRarFile(entry);
+                                }
                             }
                         }
-                    }
-                    break;
-                default:
-                    {
-                        // TODO Add link to page to request file-type
-                        MessageBox.Show("Unknown file type!");
+                        break;
+                    default:
+                        {
+                            // TODO Add link to page to request file-type
+                            MessageBox.Show("Unknown file type!");
 
-                        Environment.Exit(0);
-                    }
-                    break;
+                            Environment.Exit(0);
+                        }
+                        break;
+                }
+
+            }
+            catch (NUnrar.InvalidRarFormatException exception)
+            {
+                Console.WriteLine(exception);
+                MessageBox.Show($"Error opening rar file {this.currentArchive}. Inavlid format.\nIf you believe this is not the case, please create an issue on the GitHub repo with the log file linked.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                if (!ErrorHandler.WriteLogFile())
+                {
+                    MessageBox.Show("Failed to create log file!", string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+
+                Environment.Exit(451);
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine(exception);
+                MessageBox.Show("Generic Exception caught!\nPlease create an issue on the GitHub repo with the log file linked.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                if (!ErrorHandler.WriteLogFile())
+                {
+                    MessageBox.Show("Failed to create log file!", string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+
+                Environment.Exit(666);
             }
 
+        }
+
+        private void RecursiveExtract(string destinationFolder, string folderEntry = "")
+        {
+            Directory.CreateDirectory(destinationFolder);
+
+            RarArchive rar = RarArchive.Open(new FileInfo(this.currentArchive), RarOptions.GiveDirectoryEntries);
+            foreach (RarArchiveEntry entry in rar.Entries)
+            {
+
+                if (entry.IsDirectory && entry.FilePath.Contains(folderEntry) && entry.FilePath.Length > folderEntry.Length)
+                {
+                    this.RecursiveExtract(Path.Combine(destinationFolder, new DirectoryInfo(entry.FilePath).Name), entry.FilePath);
+                }
+                else if (!entry.IsDirectory && entry.FilePath.Contains(folderEntry))
+                {
+                    entry.WriteToFile(Path.Combine(destinationFolder, new FileInfo(entry.FilePath).Name));
+                }
+            }
         }
 
         private void EnterFolder(RarEntry folder)

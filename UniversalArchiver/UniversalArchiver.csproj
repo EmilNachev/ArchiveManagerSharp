@@ -8,9 +8,10 @@
     <OutputType>WinExe</OutputType>
     <RootNamespace>UniversalArchiver</RootNamespace>
     <AssemblyName>UniversalArchiver</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -51,6 +52,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ErrorHandler.cs" />
+    <Compile Include="Globals.cs" />
+    <Compile Include="IArchiver.cs" />
     <Compile Include="RarArchiveView.cs">
       <SubType>Form</SubType>
     </Compile>

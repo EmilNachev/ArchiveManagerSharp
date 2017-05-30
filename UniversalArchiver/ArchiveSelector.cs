@@ -7,28 +7,48 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using UniversalArchiver.DEBUG;
 
 namespace UniversalArchiver
 {
     public partial class ArchiveSelector : Form
     {
-        public ArchiveSelector()
+        private bool allowVisibilityChange;
+
+        public ArchiveSelector(string file = "")
         {
             this.InitializeComponent();
 
             this.Load += this.ArchiveSelector_Load;
+
+            if (file != string.Empty)
+            {
+                Application.Run(new RarArchiveView(file));
+            }
+            else
+            {
+                FileDialog dia = new OpenFileDialog();
+                dia.Filter = "Supported Archives|*.rar";
+
+                if (dia.ShowDialog() == DialogResult.OK)
+                {
+                    Application.Run(new RarArchiveView(dia.FileName));
+                }
+            }
+
+            if (!Application.OpenForms.OfType<IArchiver>().Any())
+            {
+                Environment.Exit(0);
+            }
+        }
+
+        protected override void SetVisibleCore(bool value)
+        {
+            base.SetVisibleCore(this.allowVisibilityChange ? value : this.allowVisibilityChange);
         }
 
         private void ArchiveSelector_Load(object sender, EventArgs e)
         {
-            FileDialog dia = new OpenFileDialog();
-            dia.Filter = "Supported Archives|*.rar";
-
-            if (dia.ShowDialog() == DialogResult.OK)
-            {
-                this.Hide();
-                new RarArchiveView(dia.FileName).Show();
-            }
         }
     }
 }

@@ -13,27 +13,48 @@ namespace UniversalArchiver.DEBUG
 {
     public partial class DebugConsole : Form
     {
+
+        private bool allowVisibilityChange;
+        private TextBoxStreamWriter writer;
+
         public DebugConsole()
         {
             this.InitializeComponent();
 
-            this.Load += this.OnLoad;
-        }
+            this.allowVisibilityChange = false;
 
-        private void OnLoad(object sender, EventArgs e)
-        {
-            TextWriter writer = new TextBoxStreamWriter(this);
-            Console.SetOut(writer);
+#if DEBUG
+            this.allowVisibilityChange = true;
+#endif
+
+            this.Load += this.OnLoad;
+
+            this.writer = new TextBoxStreamWriter(this);
+            Console.SetOut(this.writer);
 
             Program.ConsoleCreated = true;
         }
 
+        public string ConsoleText => this.writer.Text;
+
+        protected override void SetVisibleCore(bool value)
+        {
+            base.SetVisibleCore(this.allowVisibilityChange ? value : this.allowVisibilityChange);
+        }
+
+        private void OnLoad(object sender, EventArgs e)
+        {
+        }
+
         private void AddTexttoConsole(char text)
         {
-            this.Invoke(new Action(() =>
+            if (this.Created)
             {
-                this.rtbConsole.AppendText(text.ToString());
-            }));
+                this.BeginInvoke(new Action<char>(this.AddTexttoConsole), text);
+                return;
+            }
+
+            this.rtbConsole.AppendText(text.ToString());
         }
 
 
@@ -41,18 +62,26 @@ namespace UniversalArchiver.DEBUG
         {
             private readonly DebugConsole output = null;
 
+            public string Text
+            {
+                get;
+                private set;
+            }
+
             public TextBoxStreamWriter(DebugConsole output)
             {
                 this.output = output;
+                this.Text = string.Empty;
             }
 
             public override void Write(char value)
             {
                 base.Write(value);
                 this.output.AddTexttoConsole(value);
+                this.Text += value;
             }
 
-            public override Encoding Encoding => System.Text.Encoding.UTF8;
+            public override Encoding Encoding => Encoding.UTF8;
         }
     }
 }
