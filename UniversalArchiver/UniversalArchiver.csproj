@@ -64,11 +64,11 @@
       <DependentUpon>DebugConsole.cs</DependentUpon>
     </Compile>
     <Compile Include="IconHelper.cs" />
-    <Compile Include="Installer.cs">
+    <Compile Include="ArchiveSelector.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Installer.Designer.cs">
-      <DependentUpon>Installer.cs</DependentUpon>
+    <Compile Include="ArchiveSelector.Designer.cs">
+      <DependentUpon>ArchiveSelector.cs</DependentUpon>
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

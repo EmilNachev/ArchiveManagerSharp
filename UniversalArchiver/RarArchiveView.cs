@@ -25,6 +25,9 @@ namespace UniversalArchiver
         private int lastSortedColumn = -1;
         private int folderLevel;
 
+        // DragDrop variables
+        private Point startDragDropPoint;
+
         public RarArchiveView(string file)
         {
             this.InitializeComponent();
@@ -37,7 +40,9 @@ namespace UniversalArchiver
             this.lvFileList.FullRowSelect = true;
 
             this.lvFileList.ColumnClick += this.LvFileList_ColumnClick;
-            this.lvFileList.DoubleClick += LvFileList_DoubleClick;
+            this.lvFileList.DoubleClick += this.LvFileList_DoubleClick;
+            this.lvFileList.MouseDown += this.LvFileList_MouseDown;
+            this.lvFileList.MouseMove += this.LvFileList_MouseMove;
 
             this.tbArchivePath.Text = file + "\\";
             this.tbArchivePath.ReadOnly = true;
@@ -47,10 +52,53 @@ namespace UniversalArchiver
 
             this.currentArchive = file;
 
-            this.Resize += RarArchiveView_Resize;
+            this.Resize += this.RarArchiveView_Resize;
             this.Load += this.OnLoad;
 
-            this.Closed += RarArchiveView_Closed;
+            this.Closed += this.RarArchiveView_Closed;
+        }
+
+        private void LvFileList_MouseMove(object sender, MouseEventArgs e)
+        {
+            Point distanceVector = new Point(this.startDragDropPoint.X - e.X, this.startDragDropPoint.Y - e.Y);
+
+            if (e.Button == MouseButtons.Left &&
+                Math.Abs(distanceVector.X) > 10 &&
+                Math.Abs(distanceVector.Y) > 10)
+            {
+                if (this.lvFileList.SelectedItems.Count <= 0)
+                {
+                    return;
+                }
+
+                List<string> filesList = new List<string>();
+
+                foreach (ListViewItem selectedItem in this.lvFileList.SelectedItems)
+                {
+
+                    if ((selectedItem.Tag as RarArchiveEntry).IsDirectory)
+                    {
+                        (selectedItem.Tag as RarArchiveEntry).WriteToDirectory(Path.Combine(Program.TempPath, (selectedItem.Tag as RarArchiveEntry).FilePath.Replace(this.currentFolder, string.Empty)));
+
+                        filesList.Add(Path.Combine(Program.TempPath, (selectedItem.Tag as RarArchiveEntry).FilePath.Replace(this.currentFolder, string.Empty)));
+                    }
+                    else
+                    {
+                        (selectedItem.Tag as RarArchiveEntry).WriteToFile(Path.Combine(Program.TempPath, (selectedItem.Tag as RarArchiveEntry).FilePath.Replace(this.currentFolder, string.Empty)));
+
+                        filesList.Add(Path.Combine(Program.TempPath, (selectedItem.Tag as RarArchiveEntry).FilePath.Replace(this.currentFolder, string.Empty)));
+                    }
+                }
+
+                string dataFormat = DataFormats.FileDrop;
+                DataObject dataObject = new DataObject(dataFormat, filesList.ToArray());
+                this.DoDragDrop(dataObject, DragDropEffects.Copy);
+            }
+        }
+
+        private void LvFileList_MouseDown(object sender, MouseEventArgs e)
+        {
+            this.startDragDropPoint = e.Location;
         }
 
         private void RarArchiveView_Closed(object sender, EventArgs e)

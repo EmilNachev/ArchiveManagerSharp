@@ -63,7 +63,7 @@ namespace UniversalArchiver
             // If ran directly on the executable, assume install/uninstall
             if (Environment.GetCommandLineArgs().Length == 1)
             {
-                Application.Run(new Installer());
+                Application.Run(new ArchiveSelector());
             }
 
             // Open file for viewing

@@ -1,6 +1,6 @@
 ﻿namespace UniversalArchiver
 {
-    partial class Installer
+    partial class ArchiveSelector
     {
         /// <summary>
         /// Required designer variable.
