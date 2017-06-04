@@ -1,6 +1,6 @@
 ﻿namespace UniversalArchiver
 {
-    partial class RarArchiveView
+    partial class ArchiveView
     {
         /// <summary>
         /// Required designer variable.
@@ -28,15 +28,17 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.lvFileList = new System.Windows.Forms.ListView();
             this.clmName = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.clmSize = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.clmPacked = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.clmType = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.clmModified = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.btnExtract = new System.Windows.Forms.Button();
             this.tbArchivePath = new System.Windows.Forms.TextBox();
             this.pbUpALevel = new System.Windows.Forms.PictureBox();
+            this.btnExtract = new System.Windows.Forms.Button();
+            this.tipExtract = new System.Windows.Forms.ToolTip(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.pbUpALevel)).BeginInit();
             this.SuspendLayout();
             // 
@@ -82,18 +84,6 @@
             this.clmModified.Text = "Last Modified";
             this.clmModified.Width = 371;
             // 
-            // btnExtract
-            // 
-            this.btnExtract.FlatAppearance.BorderSize = 0;
-            this.btnExtract.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnExtract.Location = new System.Drawing.Point(12, 12);
-            this.btnExtract.Name = "btnExtract";
-            this.btnExtract.Size = new System.Drawing.Size(75, 75);
-            this.btnExtract.TabIndex = 1;
-            this.btnExtract.Text = "Extract...";
-            this.btnExtract.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
-            this.btnExtract.UseVisualStyleBackColor = true;
-            // 
             // tbArchivePath
             // 
             this.tbArchivePath.Location = new System.Drawing.Point(19, 101);
@@ -112,6 +102,20 @@
             this.pbUpALevel.TabIndex = 3;
             this.pbUpALevel.TabStop = false;
             this.pbUpALevel.Click += new System.EventHandler(this.PbUpALevel_Click);
+            // 
+            // btnExtract
+            // 
+            this.btnExtract.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.btnExtract.FlatAppearance.BorderSize = 0;
+            this.btnExtract.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnExtract.Image = global::UniversalArchiver.Properties.Resources.ExtractIcon;
+            this.btnExtract.ImageAlign = System.Drawing.ContentAlignment.TopCenter;
+            this.btnExtract.Location = new System.Drawing.Point(12, 12);
+            this.btnExtract.Name = "btnExtract";
+            this.btnExtract.Size = new System.Drawing.Size(75, 75);
+            this.btnExtract.TabIndex = 1;
+            this.btnExtract.UseVisualStyleBackColor = true;
+            this.btnExtract.Click += new System.EventHandler(this.BtnExtract_Click);
             // 
             // RarArchiveView
             // 
@@ -142,5 +146,6 @@
         private System.Windows.Forms.Button btnExtract;
         private System.Windows.Forms.TextBox tbArchivePath;
         private System.Windows.Forms.PictureBox pbUpALevel;
+        private System.Windows.Forms.ToolTip tipExtract;
     }
 }

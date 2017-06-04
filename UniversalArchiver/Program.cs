@@ -80,7 +80,7 @@ namespace UniversalArchiver
                 // Open file for viewing
                 else if (File.Exists(Environment.GetCommandLineArgs()[1]) && Environment.GetCommandLineArgs().Length == 2)
                 {
-                    Application.Run(new RarArchiveView(Environment.GetCommandLineArgs()[1]));
+                    Application.Run(new ArchiveView(Environment.GetCommandLineArgs()[1]));
                 }
 
                 // Open file for either viewing or extracting (Based on 2nd command-line arg)
@@ -106,11 +106,13 @@ namespace UniversalArchiver
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
-                MessageBox.Show("Generic error caught! Please create an issue on the GitHub repo with the log file linked.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-
                 if (!ErrorHandler.WriteLogFile())
                 {
                     MessageBox.Show("Failed to create log file!", string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                else
+                {
+                    MessageBox.Show("Generic error caught! Please create an issue on the GitHub repo with the log file linked.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
 
                 if (MessageBox.Show("Would you like to restart the application?", string.Empty, MessageBoxButtons.YesNo) == DialogResult.Yes)
@@ -138,7 +140,7 @@ namespace UniversalArchiver
             {
                 case ".rar":
                 {
-                    Application.Run(new RarArchiveView(file));
+                    Application.Run(new ArchiveView(file));
                 }
                     break;
                 default:

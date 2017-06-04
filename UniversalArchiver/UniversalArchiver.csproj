@@ -36,8 +36,8 @@
     <Reference Include="MimeTypeMap, Version=2.1.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\MediaTypeMap.2.1.0.0\lib\net40\MimeTypeMap.dll</HintPath>
     </Reference>
-    <Reference Include="NUnrar, Version=1.0.1.0, Culture=neutral, PublicKeyToken=07e9cc01f0cd8860, processorArchitecture=MSIL">
-      <HintPath>..\packages\nunrar.1.0.1\lib\net40\NUnrar.dll</HintPath>
+    <Reference Include="SharpCompress, Version=0.17.0.0, Culture=neutral, PublicKeyToken=afb0a02973931d96, processorArchitecture=MSIL">
+      <HintPath>..\packages\SharpCompress.0.17.0\lib\net45\SharpCompress.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -53,13 +53,19 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ErrorHandler.cs" />
-    <Compile Include="Globals.cs" />
-    <Compile Include="IArchiver.cs" />
-    <Compile Include="RarArchiveView.cs">
+    <Compile Include="Controls\ExtractionProgress.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="RarArchiveView.Designer.cs">
-      <DependentUpon>RarArchiveView.cs</DependentUpon>
+    <Compile Include="Controls\ExtractionProgress.Designer.cs">
+      <DependentUpon>ExtractionProgress.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Globals.cs" />
+    <Compile Include="IArchiver.cs" />
+    <Compile Include="ArchiveView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ArchiveView.Designer.cs">
+      <DependentUpon>ArchiveView.cs</DependentUpon>
     </Compile>
     <Compile Include="DEBUG\DebugConsole.cs">
       <SubType>Form</SubType>
@@ -76,8 +82,11 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <EmbeddedResource Include="RarArchiveView.resx">
-      <DependentUpon>RarArchiveView.cs</DependentUpon>
+    <EmbeddedResource Include="Controls\ExtractionProgress.resx">
+      <DependentUpon>ExtractionProgress.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ArchiveView.resx">
+      <DependentUpon>ArchiveView.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="DEBUG\DebugConsole.resx">
       <DependentUpon>DebugConsole.cs</DependentUpon>
@@ -111,6 +120,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\upalevel.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\ExtractIcon.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

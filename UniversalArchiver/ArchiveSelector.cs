@@ -23,16 +23,16 @@ namespace UniversalArchiver
 
             if (file != string.Empty)
             {
-                Application.Run(new RarArchiveView(file));
+                Application.Run(new ArchiveView(file));
             }
             else
             {
                 FileDialog dia = new OpenFileDialog();
-                dia.Filter = "Supported Archives|*.rar";
+                dia.Filter = "Supported Archives|*.rar; *.zip";
 
                 if (dia.ShowDialog() == DialogResult.OK)
                 {
-                    Application.Run(new RarArchiveView(dia.FileName));
+                    Application.Run(new ArchiveView(dia.FileName));
                 }
             }
 

@@ -54,7 +54,9 @@ namespace UniversalArchiver.DEBUG
                 return;
             }
 
+#if DEBUG
             this.rtbConsole.AppendText(text.ToString());
+#endif
         }
 
 
