@@ -1,4 +1,4 @@
-# UniversalArchiver
+# ArchiveManagerSharp
 Aims to be a program that can manage as many types of archives as possible
 
 # Supported Formats
