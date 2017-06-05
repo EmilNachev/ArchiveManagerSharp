@@ -7,7 +7,7 @@ Aims to be a program that can manage as many types of archives as possible
 | ------ | ------------------- |
 | RAR | View/Decompress |
 | ZIP | View/Decompress |
-| 7ZIP | ViewDecompress |
+| 7ZIP | View/Decompress |
 
 # Planned Support
 
