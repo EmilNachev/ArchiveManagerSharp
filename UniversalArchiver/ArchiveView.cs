@@ -11,6 +11,7 @@ using MimeTypes;
 using SharpCompress.Archives;
 using UniversalArchiver.Controls;
 using SharpCompress.Archives.Rar;
+using SharpCompress.Archives.SevenZip;
 using SharpCompress.Archives.Zip;
 using SharpCompress.Common;
 using SharpCompress.Common.Rar;
@@ -74,10 +75,10 @@ namespace UniversalArchiver
                     return ArchiveType.Rar;
                 case "zip":
                     return ArchiveType.Zip;
-                case "7zip":
+                case "7z":
                     return ArchiveType.SevenZip;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(extension), extension, null);
+                    return ArchiveType.Unknown;
             }
         }
 
@@ -156,23 +157,30 @@ namespace UniversalArchiver
             {
                 if (((IEntry)this.lvFileList.SelectedItems[0].Tag).IsDirectory)
                 {
-                    this.EnterFolder((RarEntry)this.lvFileList.SelectedItems[0].Tag, this.currentArchiveType);
+                    this.EnterFolder((IArchiveEntry)this.lvFileList.SelectedItems[0].Tag, this.currentArchiveType);
                 }
                 else
                 {
-                    if (((IEntry)this.lvFileList.SelectedItems[0].Tag).Key.EndsWith("rar"))
+                    if (GetArchiveType(((IEntry)this.lvFileList.SelectedItems[0].Tag).Key) == ArchiveType.Unknown)
                     {
                         // ReSharper disable once AssignNullToNotNullAttribute
-                        ((IArchiveEntry)this.lvFileList.SelectedItems[0].Tag).WriteToFile(Path.Combine(Program.TempPath(this.tempFolderNum), Path.GetFileName(((IEntry)this.lvFileList.SelectedItems[0].Tag).Key)));
+                        ((IArchiveEntry)this.lvFileList.SelectedItems[0].Tag).WriteToFile(
+                            Path.Combine(Program.TempPath(this.tempFolderNum),
+                                Path.GetFileName(((IEntry)this.lvFileList.SelectedItems[0].Tag).Key)));
                         // ReSharper disable once AssignNullToNotNullAttribute
-                        new ArchiveView(Path.Combine(Program.TempPath(this.tempFolderNum), Path.GetFileName(((IEntry)this.lvFileList.SelectedItems[0].Tag).Key))).Show();
-                        return;
+                        Process.Start(Path.Combine(Program.TempPath(this.tempFolderNum),
+                            Path.GetFileName(((IEntry)this.lvFileList.SelectedItems[0].Tag).Key)));
                     }
-
-                    // ReSharper disable once AssignNullToNotNullAttribute
-                    ((IArchiveEntry)this.lvFileList.SelectedItems[0].Tag).WriteToFile(Path.Combine(Program.TempPath(this.tempFolderNum), Path.GetFileName(((IEntry)this.lvFileList.SelectedItems[0].Tag).Key)));
-                    // ReSharper disable once AssignNullToNotNullAttribute
-                    Process.Start(Path.Combine(Program.TempPath(this.tempFolderNum), Path.GetFileName(((IEntry)this.lvFileList.SelectedItems[0].Tag).Key)));
+                    else
+                    {
+                        // ReSharper disable once AssignNullToNotNullAttribute
+                        ((IArchiveEntry)this.lvFileList.SelectedItems[0].Tag).WriteToFile(
+                            Path.Combine(Program.TempPath(this.tempFolderNum),
+                                Path.GetFileName(((IEntry)this.lvFileList.SelectedItems[0].Tag).Key)));
+                        // ReSharper disable once AssignNullToNotNullAttribute
+                        new ArchiveView(Path.Combine(Program.TempPath(this.tempFolderNum),
+                            Path.GetFileName(((IEntry)this.lvFileList.SelectedItems[0].Tag).Key))).Show();
+                    }
                 }
             }
         }
@@ -224,7 +232,7 @@ namespace UniversalArchiver
                                 }
                             }
 
-                            this.currentArchiveType = rar.Type;
+                            this.currentArchiveType = (ArchiveType)Convert.ToInt32(rar.Type);
                         }
                         break;
                     case ArchiveType.Zip:
@@ -244,18 +252,35 @@ namespace UniversalArchiver
                                 }
                             }
 
-                            this.currentArchiveType = zipArchive.Type;
+                            this.currentArchiveType = (ArchiveType)Convert.ToInt32(zipArchive.Type);
                         }
                         break;
                     case ArchiveType.Tar:
                         break;
                     case ArchiveType.SevenZip:
+                    {
+                            SevenZipArchive archive = SevenZipArchive.Open(new FileInfo(this.currentArchive));
+                            foreach (IEntry entry in archive.Entries)
+                            {
+                                if (entry.IsDirectory && !entry.Key.Contains("\\"))
+                                {
+                                    this.AddFolder(entry);
+                                    Console.Out.WriteLine(entry.Key);
+                                }
+
+                                else if (!entry.Key.Contains("\\"))
+                                {
+                                    this.AddFile(entry);
+                                }
+                            }
+
+                            this.currentArchiveType = (ArchiveType)Convert.ToInt32(archive.Type);
+                        }
                         break;
                     case ArchiveType.GZip:
                         break;
                     default:
                         {
-                            // TODO Add link to page to request file-type
                             MessageBox.Show("Unknown file type!");
 
                             Environment.Exit(0);
@@ -305,7 +330,7 @@ namespace UniversalArchiver
 
                             if (entry.IsDirectory && entry.Key.Contains(folderEntry) && entry.Key.Length > folderEntry.Length)
                             {
-                                this.RecursiveExtract(Path.Combine(destinationFolder, new DirectoryInfo(entry.Key).Name), rar.Type, entry.Key);
+                                this.RecursiveExtract(Path.Combine(destinationFolder, new DirectoryInfo(entry.Key).Name), (ArchiveType)Convert.ToInt32(rar.Type), entry.Key);
                             }
                             else if (!entry.IsDirectory && entry.Key.Contains(folderEntry))
                             {
@@ -322,7 +347,7 @@ namespace UniversalArchiver
 
                             if (entry.IsDirectory && entry.Key.Contains(folderEntry) && entry.Key.Length > folderEntry.Length)
                             {
-                                this.RecursiveExtract(Path.Combine(destinationFolder, new DirectoryInfo(entry.Key).Name), archive.Type, entry.Key);
+                                this.RecursiveExtract(Path.Combine(destinationFolder, new DirectoryInfo(entry.Key).Name), (ArchiveType)Convert.ToInt32(archive.Type), entry.Key);
                             }
                             else if (!entry.IsDirectory && entry.Key.Contains(folderEntry))
                             {
@@ -332,8 +357,26 @@ namespace UniversalArchiver
                     }
                     break;
                 case ArchiveType.Tar:
+                {
+                    
+                }
                     break;
                 case ArchiveType.SevenZip:
+                {
+                        SevenZipArchive archive = SevenZipArchive.Open(new FileInfo(this.currentArchive));
+                        foreach (IArchiveEntry entry in archive.Entries)
+                        {
+
+                            if (entry.IsDirectory && entry.Key.Contains(folderEntry) && entry.Key.Length > folderEntry.Length)
+                            {
+                                this.RecursiveExtract(Path.Combine(destinationFolder, new DirectoryInfo(entry.Key).Name), (ArchiveType)Convert.ToInt32(archive.Type), entry.Key);
+                            }
+                            else if (!entry.IsDirectory && entry.Key.Contains(folderEntry))
+                            {
+                                entry.WriteToFile(Path.Combine(destinationFolder, new FileInfo(entry.Key).Name));
+                            }
+                        }
+                    }
                     break;
                 case ArchiveType.GZip:
                     break;
@@ -368,7 +411,6 @@ namespace UniversalArchiver
         private void EnterFolder(IEntry folder, ArchiveType type)
         {
             this.folderLevel++;
-
             this.lvFileList.BeginUpdate();
             this.lvFileList.Items.Clear();
             this.lvFileList.EndUpdate();
@@ -438,6 +480,32 @@ namespace UniversalArchiver
                 case ArchiveType.Tar:
                     break;
                 case ArchiveType.SevenZip:
+                {
+                        SevenZipArchive archive = SevenZipArchive.Open(new FileInfo(this.currentArchive));
+                        foreach (IEntry entry in archive.Entries)
+                        {
+                            if (entry.IsDirectory && entry.Key.Contains($"{folder.Key}\\"))
+                            {
+                                if (entry.Key.ToCharArray().ToList().FindAll(e => e == '\\').Count != slashes)
+                                {
+                                    continue;
+                                }
+
+                                this.AddFolder(entry);
+                                Console.Out.WriteLine(entry.Key);
+                            }
+                            else if (entry.Key.Contains($"{folder.Key}\\"))
+                            {
+                                if (entry.Key.ToCharArray().ToList().FindAll(e => e == '\\').Count != slashes)
+                                {
+                                    continue;
+                                }
+
+                                this.AddFile(entry);
+                                Console.Out.WriteLine(entry.Key);
+                            }
+                        }
+                    }
                     break;
                 case ArchiveType.GZip:
                     break;
@@ -532,6 +600,33 @@ namespace UniversalArchiver
                 case ArchiveType.Tar:
                     break;
                 case ArchiveType.SevenZip:
+                {
+                        SevenZipArchive archive = SevenZipArchive.Open(new FileInfo(this.currentArchive));
+                        foreach (IEntry entry in archive.Entries)
+                        {
+
+                            if (entry.IsDirectory && entry.Key.Contains($"{this.currentFolder}"))
+                            {
+                                if (entry.Key.ToCharArray().ToList().FindAll(e => e == '\\').Count != slashes)
+                                {
+                                    continue;
+                                }
+
+                                this.AddFolder(entry);
+                                Console.Out.WriteLine(entry.Key);
+                            }
+                            else if (entry.Key.Contains($"{this.currentFolder}"))
+                            {
+                                if (entry.Key.ToCharArray().ToList().FindAll(e => e == '\\').Count != slashes)
+                                {
+                                    continue;
+                                }
+
+                                this.AddFile(entry);
+                                Console.Out.WriteLine(entry.Key);
+                            }
+                        }
+                    }
                     break;
                 case ArchiveType.GZip:
                     break;
@@ -817,6 +912,48 @@ namespace UniversalArchiver
                     case ArchiveType.Tar:
                         break;
                     case ArchiveType.SevenZip:
+                    {
+                            SevenZipArchive archive = SevenZipArchive.Open(new FileInfo(this.currentArchive));
+
+                            int fileCount = 0;
+                            foreach (IEntry rarArchiveEntry in archive.Entries)
+                            {
+                                if (!rarArchiveEntry.IsDirectory)
+                                {
+                                    fileCount++;
+                                }
+                            }
+
+                            if (fldDialog != null)
+                            {
+                                this.extractionProgress.FileCount = fileCount;
+                                this.extractionProgress.ExtractionLocation = fldDialog.SelectedPath;
+
+                                foreach (IEntry rarArchiveEntry in archive.Entries)
+                                {
+                                    if (rarArchiveEntry.IsDirectory)
+                                    {
+                                        this.extractionProgress.CurrentProcess = $"Creating folder {Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key)}...";
+                                        Directory.CreateDirectory(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
+                                    }
+                                }
+
+                                foreach (IArchiveEntry rarArchiveEntry in archive.Entries)
+                                {
+                                    if (!rarArchiveEntry.IsDirectory)
+                                    {
+                                        this.extractionProgress.CurrentProcess = $"Writing file {Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key)}...";
+                                        this.extractionProgress.CurrentFile = new FileInfo(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
+                                        this.extractionProgress.ExpectedFileSize = rarArchiveEntry.Size;
+                                        rarArchiveEntry.WriteToFile(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                throw new NullReferenceException("The value for \"fldDialog\" was not intialized.");
+                            }
+                        }
                         break;
                     case ArchiveType.GZip:
                         break;
@@ -837,6 +974,16 @@ namespace UniversalArchiver
                     MessageBox.Show("Generic error caught! Please create an issue on the GitHub repo with the log file linked.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
+        }
+
+        private enum ArchiveType
+        {
+            Rar,
+            Zip,
+            Tar,
+            SevenZip,
+            GZip,
+            Unknown
         }
     }
 }

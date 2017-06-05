@@ -3,18 +3,19 @@ Aims to be a program that can manage as many types of archives as possible
 
 # Supported Formats
 
-| Format | Compress/Decompress |
+| Format | View/Compress/Decompress |
 | ------ | ------------------- |
 | RAR | Decompress |
-| Zip | Decompress |
+| ZIP | Decompress |
+| 7ZIP | Decompress |
 
 # Planned Support
 
 | Format | Compress/Decompress | Notes |
 | ------ | ------------------- | ----- |
 | RAR | Decompress | Compressing is against the [RAR License](http://www.rarlab.com/license.htm) |
-| Zip | Compress/Decompress | Compressing is WIP |
-| Tar | Both | Preliminary extraction support added |
+| Zip | Both | Compressing is WIP |
+| Tar | Both | Compressing is WIP |
 | 7zip | Both | Preliminary extraction support added |
 | Gzip | Both | Preliminary extraction support added |
 

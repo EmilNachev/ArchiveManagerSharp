@@ -28,7 +28,7 @@ namespace UniversalArchiver
             else
             {
                 FileDialog dia = new OpenFileDialog();
-                dia.Filter = "Supported Archives|*.rar; *.zip";
+                dia.Filter = "Supported Archives|*.rar; *.zip; *.7z";
 
                 if (dia.ShowDialog() == DialogResult.OK)
                 {
