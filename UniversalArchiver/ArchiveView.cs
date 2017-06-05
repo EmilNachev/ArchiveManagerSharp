@@ -915,6 +915,24 @@ namespace UniversalArchiver
                                         this.extractionProgress.ExpectedFileSize = rarArchiveEntry.Size;
                                         rarArchiveEntry.WriteToFile(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
                                     }
+
+                                    if (rarArchiveEntry.Size != new FileInfo(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key)).Length)
+                                    {
+                                        MessageBox.Show("This archive may be password encrypted. Please enter password in the following dialog");
+
+                                        using (PasswordDialog dia = new PasswordDialog(false))
+                                        {
+                                            if (dia.ShowDialog() == DialogResult.OK)
+                                            {
+                                                this.Invoke(new Action(() => 
+                                                {
+                                                this.OnLoad(this, EventArgs.Empty, dia.Result);
+                                                }));
+                                            }
+
+                                            return;
+                                        }
+                                    }
                                 }
                             }
                             else
@@ -924,7 +942,7 @@ namespace UniversalArchiver
                         }
                         break;
                     case ArchiveType.Zip:
-                    {
+                        {
                             ZipArchive archive = ZipArchive.Open(new FileInfo(this.currentArchive), new ReaderOptions
                             {
                                 Password = this.archivePassword
@@ -951,6 +969,24 @@ namespace UniversalArchiver
                                         this.extractionProgress.CurrentProcess = $"Creating folder {Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key)}...";
                                         Directory.CreateDirectory(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
                                     }
+
+                                    if (rarArchiveEntry.Size != new FileInfo(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key)).Length)
+                                    {
+                                        MessageBox.Show("This archive may be password encrypted. Please enter password in the following dialog");
+
+                                        using (PasswordDialog dia = new PasswordDialog(false))
+                                        {
+                                            if (dia.ShowDialog() == DialogResult.OK)
+                                            {
+                                                this.Invoke(new Action(() =>
+                                                {
+                                                    this.OnLoad(this, EventArgs.Empty, dia.Result);
+                                                }));
+                                            }
+
+                                            return;
+                                        }
+                                    }
                                 }
 
                                 foreach (IArchiveEntry rarArchiveEntry in archive.Entries)
@@ -961,6 +997,24 @@ namespace UniversalArchiver
                                         this.extractionProgress.CurrentFile = new FileInfo(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
                                         this.extractionProgress.ExpectedFileSize = rarArchiveEntry.Size;
                                         rarArchiveEntry.WriteToFile(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
+                                    }
+
+                                    if (rarArchiveEntry.Size != new FileInfo(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key)).Length)
+                                    {
+                                        MessageBox.Show("This archive may be password encrypted. Please enter password in the following dialog");
+
+                                        using (PasswordDialog dia = new PasswordDialog(false))
+                                        {
+                                            if (dia.ShowDialog() == DialogResult.OK)
+                                            {
+                                                this.Invoke(new Action(() =>
+                                                {
+                                                    this.OnLoad(this, EventArgs.Empty, dia.Result);
+                                                }));
+                                            }
+
+                                            return;
+                                        }
                                     }
                                 }
                             }
@@ -973,7 +1027,7 @@ namespace UniversalArchiver
                     case ArchiveType.Tar:
                         break;
                     case ArchiveType.SevenZip:
-                    {
+                        {
                             SevenZipArchive archive = SevenZipArchive.Open(new FileInfo(this.currentArchive), new ReaderOptions
                             {
                                 Password = this.archivePassword
@@ -1010,6 +1064,27 @@ namespace UniversalArchiver
                                         this.extractionProgress.CurrentFile = new FileInfo(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
                                         this.extractionProgress.ExpectedFileSize = rarArchiveEntry.Size;
                                         rarArchiveEntry.WriteToFile(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
+
+                                        if (rarArchiveEntry.Size != new FileInfo(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key)).Length)
+                                        {
+                                            MessageBox.Show("This archive may be password encrypted. Please enter password in the following dialog");
+
+                                            using (PasswordDialog dia = new PasswordDialog(false))
+                                            {
+                                                if (dia.ShowDialog() == DialogResult.OK)
+                                                {
+                                                    this.Invoke(new Action(() =>
+                                                    {
+                                                        this.Invoke(new Action(() => 
+                                                        {
+                                                        this.OnLoad(this, EventArgs.Empty, dia.Result);
+                                                        }));
+                                                    }));
+                                                }
+
+                                                return;
+                                            }
+                                        }
                                     }
                                 }
                             }
