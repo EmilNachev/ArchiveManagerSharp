@@ -24,4 +24,5 @@ If any formats are requested, create an issue and I will do my best to add them.
 # Libraries
 
 SharpCompress - https://github.com/adamhathcock/sharpcompress
+
 MimeTypeMap - https://github.com/samuelneff/MimeTypeMap
