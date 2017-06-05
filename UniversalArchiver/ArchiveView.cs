@@ -15,6 +15,7 @@ using SharpCompress.Archives.SevenZip;
 using SharpCompress.Archives.Zip;
 using SharpCompress.Common;
 using SharpCompress.Common.Rar;
+using SharpCompress.Readers;
 
 namespace UniversalArchiver
 {
@@ -23,14 +24,27 @@ namespace UniversalArchiver
         private ImageList iconList;
         private string currentArchive;
         private string currentFolder = "\0";
+        private string archivePassword;
         private int lastSortedColumn = -1;
         private int folderLevel;
         private int tempFolderNum;
+        private int passwordAttempts;
+        private bool hasAttemptedPassword;
         private ExtractionProgress extractionProgress;
         private ArchiveType currentArchiveType;
 
         // DragDrop variables
         private Point startDragDropPoint;
+
+        private enum ArchiveType
+        {
+            Rar,
+            Zip,
+            Tar,
+            SevenZip,
+            GZip,
+            Unknown
+        }
 
         public ArchiveView(string file)
         {
@@ -67,6 +81,207 @@ namespace UniversalArchiver
             this.Closed += this.RarArchiveView_Closed;
         }
 
+        private void OnLoad(object sender, EventArgs e) => this.OnLoad(sender, e, "");
+
+        private void OnLoad(object sender, EventArgs e, string password)
+        {
+            if (this.passwordAttempts == 5)
+            {
+                MessageBox.Show("You have reached the max amount of password attempts! If there is a non-password related issue, a log file will be created.");
+
+                ErrorHandler.WriteLogFile();
+
+                Environment.Exit(445);
+            }
+
+            this.TopMost = true;
+            this.TopMost = false;
+
+            this.lvFileList.BeginUpdate();
+            this.lvFileList.Items.Clear();
+            this.lvFileList.EndUpdate();
+
+            try
+            {
+                this.archivePassword = password;
+
+                switch (GetArchiveType(Path.GetExtension(this.currentArchive)))
+                {
+                    case ArchiveType.Rar:
+                        {
+                            RarArchive rar = RarArchive.Open(new FileInfo(this.currentArchive), new ReaderOptions
+                            {
+                                Password = password
+                            });
+                            foreach (IEntry entry in rar.Entries)
+                            {
+                                if (entry.IsDirectory && !entry.Key.Contains("\\"))
+                                {
+                                    this.AddFolder(entry);
+                                    Console.Out.WriteLine(entry.Key);
+                                }
+
+                                else if (!entry.Key.Contains("\\"))
+                                {
+                                    this.AddFile(entry);
+                                }
+                            }
+
+                            this.currentArchiveType = (ArchiveType)Convert.ToInt32(rar.Type);
+                        }
+                        break;
+                    case ArchiveType.Zip:
+                        {
+                            ZipArchive zipArchive = ZipArchive.Open(new FileInfo(this.currentArchive), new ReaderOptions
+                            {
+                                Password = password
+                            });
+                            foreach (IEntry entry in zipArchive.Entries)
+                            {
+                                if (entry.IsDirectory && !entry.Key.Contains("\\"))
+                                {
+                                    this.AddFolder(entry);
+                                    Console.Out.WriteLine(entry.Key);
+                                }
+
+                                else if (!entry.Key.Contains("\\"))
+                                {
+                                    this.AddFile(entry);
+                                }
+                            }
+
+                            this.currentArchiveType = (ArchiveType)Convert.ToInt32(zipArchive.Type);
+                        }
+                        break;
+                    case ArchiveType.Tar:
+                        break;
+                    case ArchiveType.SevenZip:
+                        {
+                            SevenZipArchive archive = SevenZipArchive.Open(new FileInfo(this.currentArchive), new ReaderOptions
+                            {
+                                Password = password
+                            });
+                            foreach (IEntry entry in archive.Entries)
+                            {
+                                if (entry.IsDirectory && !entry.Key.Contains("\\"))
+                                {
+                                    this.AddFolder(entry);
+                                    Console.Out.WriteLine(entry.Key);
+                                }
+
+                                else if (!entry.Key.Contains("\\"))
+                                {
+                                    this.AddFile(entry);
+                                }
+                            }
+
+                            this.currentArchiveType = (ArchiveType)Convert.ToInt32(archive.Type);
+                        }
+                        break;
+                    case ArchiveType.GZip:
+                        break;
+                    default:
+                        {
+                            MessageBox.Show("Unknown file type!");
+
+                            Environment.Exit(0);
+                        }
+                        break;
+                }
+            }
+            catch (PasswordProtectedException exception)
+            {
+                Console.Out.WriteLine(exception);
+
+                this.passwordAttempts++;
+
+                PasswordDialog dialog = new PasswordDialog(this.hasAttemptedPassword);
+
+                // TODO: [Enter password Control]
+                if (this.hasAttemptedPassword && dialog.ShowDialog() == DialogResult.OK)
+                {
+                    password = dialog.Result;
+                }
+                else if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    password = dialog.Result;
+
+                    this.hasAttemptedPassword = true;
+                }
+
+                this.OnLoad(this, new EventArgs(), password);
+            }
+            catch (CryptographicException exception)
+            {
+                Console.Out.WriteLine(exception);
+
+                this.passwordAttempts++;
+
+                PasswordDialog dialog = new PasswordDialog(this.hasAttemptedPassword);
+
+                // TODO: [Enter password Control]
+                if (this.hasAttemptedPassword && dialog.ShowDialog() == DialogResult.OK)
+                {
+                    password = dialog.Result;
+                }
+                else if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    password = dialog.Result;
+
+                    this.hasAttemptedPassword = true;
+                }
+
+                this.OnLoad(this, new EventArgs(), password);
+            }
+            catch (InvalidFormatException exception)
+            {
+                Console.Out.WriteLine(exception);
+
+                this.passwordAttempts++;
+
+                PasswordDialog dialog = new PasswordDialog(this.hasAttemptedPassword);
+
+                // TODO: [Enter password Control]
+                if (this.hasAttemptedPassword && dialog.ShowDialog() == DialogResult.OK)
+                {
+                    password = dialog.Result;
+                }
+                else if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    password = dialog.Result;
+
+                    this.hasAttemptedPassword = true;
+                }
+
+                this.OnLoad(this, new EventArgs(), password);
+            }
+            catch (ExtractionException exception)
+            {
+                Console.WriteLine(exception);
+                MessageBox.Show($"Error opening archive {this.currentArchive}. Invalid format.\nIf you believe this is not the case, please create an issue on the GitHub repo with the log file linked.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                if (!ErrorHandler.WriteLogFile())
+                {
+                    MessageBox.Show("Failed to create log file!", string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+
+                Environment.Exit(451);
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine(exception);
+                MessageBox.Show("Generic Exception caught!\nPlease create an issue on the GitHub repo with the log file linked.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                if (!ErrorHandler.WriteLogFile())
+                {
+                    MessageBox.Show("Failed to create log file!", string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+
+                Environment.Exit(666);
+            }
+
+        }
+
         private static ArchiveType GetArchiveType(string extension)
         {
             switch (extension.Replace(".", string.Empty))
@@ -74,6 +289,7 @@ namespace UniversalArchiver
                 case "rar": 
                     return ArchiveType.Rar;
                 case "zip":
+                case "zipx":
                     return ArchiveType.Zip;
                 case "7z":
                     return ArchiveType.SevenZip;
@@ -202,120 +418,6 @@ namespace UniversalArchiver
             this.lastSortedColumn = e.Column;
         }
 
-        private void OnLoad(object sender, EventArgs e)
-        {
-            this.TopMost = true;
-            this.TopMost = false;
-
-            this.lvFileList.BeginUpdate();
-            this.lvFileList.Items.Clear();
-            this.lvFileList.EndUpdate();
-
-            try
-            {
-                switch (GetArchiveType(Path.GetExtension(this.currentArchive)))
-                {
-                    case ArchiveType.Rar:
-                        {
-                            RarArchive rar = RarArchive.Open(new FileInfo(this.currentArchive));
-                            foreach (IEntry entry in rar.Entries)
-                            {
-                                if (entry.IsDirectory && !entry.Key.Contains("\\"))
-                                {
-                                    this.AddFolder(entry);
-                                    Console.Out.WriteLine(entry.Key);
-                                }
-
-                                else if (!entry.Key.Contains("\\"))
-                                {
-                                    this.AddFile(entry);
-                                }
-                            }
-
-                            this.currentArchiveType = (ArchiveType)Convert.ToInt32(rar.Type);
-                        }
-                        break;
-                    case ArchiveType.Zip:
-                        {
-                            ZipArchive zipArchive = ZipArchive.Open(new FileInfo(this.currentArchive));
-                            foreach (IEntry entry in zipArchive.Entries)
-                            {
-                                if (entry.IsDirectory && !entry.Key.Contains("\\"))
-                                {
-                                    this.AddFolder(entry);
-                                    Console.Out.WriteLine(entry.Key);
-                                }
-
-                                else if (!entry.Key.Contains("\\"))
-                                {
-                                    this.AddFile(entry);
-                                }
-                            }
-
-                            this.currentArchiveType = (ArchiveType)Convert.ToInt32(zipArchive.Type);
-                        }
-                        break;
-                    case ArchiveType.Tar:
-                        break;
-                    case ArchiveType.SevenZip:
-                    {
-                            SevenZipArchive archive = SevenZipArchive.Open(new FileInfo(this.currentArchive));
-                            foreach (IEntry entry in archive.Entries)
-                            {
-                                if (entry.IsDirectory && !entry.Key.Contains("\\"))
-                                {
-                                    this.AddFolder(entry);
-                                    Console.Out.WriteLine(entry.Key);
-                                }
-
-                                else if (!entry.Key.Contains("\\"))
-                                {
-                                    this.AddFile(entry);
-                                }
-                            }
-
-                            this.currentArchiveType = (ArchiveType)Convert.ToInt32(archive.Type);
-                        }
-                        break;
-                    case ArchiveType.GZip:
-                        break;
-                    default:
-                        {
-                            MessageBox.Show("Unknown file type!");
-
-                            Environment.Exit(0);
-                        }
-                        break;
-                }
-
-            }
-            catch (ExtractionException exception)
-            {
-                Console.WriteLine(exception);
-                MessageBox.Show($"Error opening rar file {this.currentArchive}. Inavlid format.\nIf you believe this is not the case, please create an issue on the GitHub repo with the log file linked.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-
-                if (!ErrorHandler.WriteLogFile())
-                {
-                    MessageBox.Show("Failed to create log file!", string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-
-                Environment.Exit(451);
-            }
-            catch (Exception exception)
-            {
-                Console.WriteLine(exception);
-                MessageBox.Show("Generic Exception caught!\nPlease create an issue on the GitHub repo with the log file linked.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-
-                if (!ErrorHandler.WriteLogFile())
-                {
-                    MessageBox.Show("Failed to create log file!", string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-
-                Environment.Exit(666);
-            }
-
-        }
-
         private void RecursiveExtract(string destinationFolder, ArchiveType type, string folderEntry = "")
         {
             Directory.CreateDirectory(destinationFolder);
@@ -324,7 +426,10 @@ namespace UniversalArchiver
             {
                 case ArchiveType.Rar:
                 {
-                        RarArchive rar = RarArchive.Open(new FileInfo(this.currentArchive));
+                        RarArchive rar = RarArchive.Open(new FileInfo(this.currentArchive), new ReaderOptions
+                        {
+                            Password = this.archivePassword
+                        });
                         foreach (IArchiveEntry entry in rar.Entries)
                         {
 
@@ -341,7 +446,10 @@ namespace UniversalArchiver
                     break;
                 case ArchiveType.Zip:
                 {
-                        ZipArchive archive = ZipArchive.Open(new FileInfo(this.currentArchive));
+                        ZipArchive archive = ZipArchive.Open(new FileInfo(this.currentArchive), new ReaderOptions
+                        {
+                            Password = this.archivePassword
+                        });
                         foreach (IArchiveEntry entry in archive.Entries)
                         {
 
@@ -363,7 +471,10 @@ namespace UniversalArchiver
                     break;
                 case ArchiveType.SevenZip:
                 {
-                        SevenZipArchive archive = SevenZipArchive.Open(new FileInfo(this.currentArchive));
+                        SevenZipArchive archive = SevenZipArchive.Open(new FileInfo(this.currentArchive), new ReaderOptions
+                        {
+                            Password = this.archivePassword
+                        });
                         foreach (IArchiveEntry entry in archive.Entries)
                         {
 
@@ -423,7 +534,10 @@ namespace UniversalArchiver
             {
                 case ArchiveType.Rar:
                     {
-                        RarArchive rar = RarArchive.Open(new FileInfo(this.currentArchive));
+                        RarArchive rar = RarArchive.Open(new FileInfo(this.currentArchive), new ReaderOptions
+                        {
+                            Password = this.archivePassword
+                        });
                         foreach (IEntry entry in rar.Entries)
                         {
                             if (entry.IsDirectory && entry.Key.Contains($"{folder.Key}\\"))
@@ -451,7 +565,10 @@ namespace UniversalArchiver
                     break;
                 case ArchiveType.Zip:
                 {
-                        ZipArchive archive = ZipArchive.Open(new FileInfo(this.currentArchive));
+                        ZipArchive archive = ZipArchive.Open(new FileInfo(this.currentArchive), new ReaderOptions
+                        {
+                            Password = this.archivePassword
+                        });
                         foreach (IEntry entry in archive.Entries)
                         {
                             if (entry.IsDirectory && entry.Key.Contains($"{folder.Key}\\"))
@@ -481,7 +598,10 @@ namespace UniversalArchiver
                     break;
                 case ArchiveType.SevenZip:
                 {
-                        SevenZipArchive archive = SevenZipArchive.Open(new FileInfo(this.currentArchive));
+                        SevenZipArchive archive = SevenZipArchive.Open(new FileInfo(this.currentArchive), new ReaderOptions
+                        {
+                            Password = this.archivePassword
+                        });
                         foreach (IEntry entry in archive.Entries)
                         {
                             if (entry.IsDirectory && entry.Key.Contains($"{folder.Key}\\"))
@@ -541,7 +661,10 @@ namespace UniversalArchiver
             {
                 case ArchiveType.Rar:
                 {
-                        RarArchive rar = RarArchive.Open(new FileInfo(this.currentArchive));
+                        RarArchive rar = RarArchive.Open(new FileInfo(this.currentArchive), new ReaderOptions
+                        {
+                            Password = this.archivePassword
+                        });
                         foreach (IEntry entry in rar.Entries)
                         {
 
@@ -570,7 +693,10 @@ namespace UniversalArchiver
                     break;
                 case ArchiveType.Zip:
                 {
-                        ZipArchive archive = ZipArchive.Open(new FileInfo(this.currentArchive));
+                        ZipArchive archive = ZipArchive.Open(new FileInfo(this.currentArchive), new ReaderOptions
+                        {
+                            Password = this.archivePassword
+                        });
                         foreach (IEntry entry in archive.Entries)
                         {
 
@@ -601,7 +727,10 @@ namespace UniversalArchiver
                     break;
                 case ArchiveType.SevenZip:
                 {
-                        SevenZipArchive archive = SevenZipArchive.Open(new FileInfo(this.currentArchive));
+                        SevenZipArchive archive = SevenZipArchive.Open(new FileInfo(this.currentArchive), new ReaderOptions
+                        {
+                            Password = this.archivePassword
+                        });
                         foreach (IEntry entry in archive.Entries)
                         {
 
@@ -705,6 +834,212 @@ namespace UniversalArchiver
             }
         }
 
+        private void BtnExtract_Click(object sender, EventArgs e)
+        {
+            this.extractionProgress = new ExtractionProgress();
+
+            BackgroundWorker worker = new BackgroundWorker
+            {
+                WorkerReportsProgress = true
+            };
+
+            worker.DoWork += this.BackgroundExtractor_DoWork;
+            worker.RunWorkerCompleted += this.BackgroundExtractor_RunWorkerCompleted;
+
+            FolderBrowserDialog fldDialog = new FolderBrowserDialog
+            {
+                Description = "Select folder to extract to...",
+                ShowNewFolderButton = true
+            };
+
+            if (fldDialog.ShowDialog() == DialogResult.OK)
+            {
+                worker.RunWorkerAsync(fldDialog);
+                
+                this.extractionProgress.Show();
+            }
+
+            this.Enabled = false;
+        }
+
+        private void BackgroundExtractor_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            this.Enabled = true;
+            this.extractionProgress.Hide();
+        }
+
+        private void BackgroundExtractor_DoWork(object sender, DoWorkEventArgs e)
+        {
+            try
+            {
+                FolderBrowserDialog fldDialog = e.Argument as FolderBrowserDialog;
+
+                switch (this.currentArchiveType)
+                {
+                    case ArchiveType.Rar:
+                        {
+                            RarArchive rar = RarArchive.Open(new FileInfo(this.currentArchive), new ReaderOptions
+                            {
+                                Password = this.archivePassword
+                            });
+
+                            int fileCount = 0;
+                            foreach (IEntry rarArchiveEntry in rar.Entries)
+                            {
+                                if (!rarArchiveEntry.IsDirectory)
+                                {
+                                    fileCount++;
+                                }
+                            }
+
+                            if (fldDialog != null)
+                            {
+                                this.extractionProgress.FileCount = fileCount;
+                                this.extractionProgress.ExtractionLocation = fldDialog.SelectedPath;
+
+                                foreach (IEntry rarArchiveEntry in rar.Entries)
+                                {
+                                    if (rarArchiveEntry.IsDirectory)
+                                    {
+                                        this.extractionProgress.CurrentProcess = $"Creating folder {Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key)}...";
+                                        Directory.CreateDirectory(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
+                                    }
+                                }
+
+                                foreach (IArchiveEntry rarArchiveEntry in rar.Entries)
+                                {
+                                    if (!rarArchiveEntry.IsDirectory)
+                                    {
+                                        this.extractionProgress.CurrentProcess = $"Writing file {Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key)}...";
+                                        this.extractionProgress.CurrentFile = new FileInfo(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
+                                        this.extractionProgress.ExpectedFileSize = rarArchiveEntry.Size;
+                                        rarArchiveEntry.WriteToFile(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                throw new NullReferenceException("The value for \"fldDialog\" was not intialized.");
+                            }
+                        }
+                        break;
+                    case ArchiveType.Zip:
+                    {
+                            ZipArchive archive = ZipArchive.Open(new FileInfo(this.currentArchive), new ReaderOptions
+                            {
+                                Password = this.archivePassword
+                            });
+
+                            int fileCount = 0;
+                            foreach (IEntry rarArchiveEntry in archive.Entries)
+                            {
+                                if (!rarArchiveEntry.IsDirectory)
+                                {
+                                    fileCount++;
+                                }
+                            }
+
+                            if (fldDialog != null)
+                            {
+                                this.extractionProgress.FileCount = fileCount;
+                                this.extractionProgress.ExtractionLocation = fldDialog.SelectedPath;
+
+                                foreach (IEntry rarArchiveEntry in archive.Entries)
+                                {
+                                    if (rarArchiveEntry.IsDirectory)
+                                    {
+                                        this.extractionProgress.CurrentProcess = $"Creating folder {Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key)}...";
+                                        Directory.CreateDirectory(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
+                                    }
+                                }
+
+                                foreach (IArchiveEntry rarArchiveEntry in archive.Entries)
+                                {
+                                    if (!rarArchiveEntry.IsDirectory)
+                                    {
+                                        this.extractionProgress.CurrentProcess = $"Writing file {Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key)}...";
+                                        this.extractionProgress.CurrentFile = new FileInfo(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
+                                        this.extractionProgress.ExpectedFileSize = rarArchiveEntry.Size;
+                                        rarArchiveEntry.WriteToFile(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                throw new NullReferenceException("The value for \"fldDialog\" was not intialized.");
+                            }
+                        }
+                        break;
+                    case ArchiveType.Tar:
+                        break;
+                    case ArchiveType.SevenZip:
+                    {
+                            SevenZipArchive archive = SevenZipArchive.Open(new FileInfo(this.currentArchive), new ReaderOptions
+                            {
+                                Password = this.archivePassword
+                            });
+
+                            int fileCount = 0;
+                            foreach (IEntry rarArchiveEntry in archive.Entries)
+                            {
+                                if (!rarArchiveEntry.IsDirectory)
+                                {
+                                    fileCount++;
+                                }
+                            }
+
+                            if (fldDialog != null)
+                            {
+                                this.extractionProgress.FileCount = fileCount;
+                                this.extractionProgress.ExtractionLocation = fldDialog.SelectedPath;
+
+                                foreach (IEntry rarArchiveEntry in archive.Entries)
+                                {
+                                    if (rarArchiveEntry.IsDirectory)
+                                    {
+                                        this.extractionProgress.CurrentProcess = $"Creating folder {Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key)}...";
+                                        Directory.CreateDirectory(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
+                                    }
+                                }
+
+                                foreach (IArchiveEntry rarArchiveEntry in archive.Entries)
+                                {
+                                    if (!rarArchiveEntry.IsDirectory)
+                                    {
+                                        this.extractionProgress.CurrentProcess = $"Writing file {Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key)}...";
+                                        this.extractionProgress.CurrentFile = new FileInfo(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
+                                        this.extractionProgress.ExpectedFileSize = rarArchiveEntry.Size;
+                                        rarArchiveEntry.WriteToFile(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                throw new NullReferenceException("The value for \"fldDialog\" was not intialized.");
+                            }
+                        }
+                        break;
+                    case ArchiveType.GZip:
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine(exception);
+
+                if (!ErrorHandler.WriteLogFile())
+                {
+                    MessageBox.Show("Failed to create log file!", string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                else
+                {
+                    MessageBox.Show("Generic error caught! Please create an issue on the GitHub repo with the log file linked.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
         private class FileFolderComparer : IComparer
         {
             private int col;
@@ -777,213 +1112,6 @@ namespace UniversalArchiver
 
                 return returnVal;
             }
-        }
-
-        private void BtnExtract_Click(object sender, EventArgs e)
-        {
-            this.extractionProgress = new ExtractionProgress();
-
-            BackgroundWorker worker = new BackgroundWorker
-            {
-                WorkerReportsProgress = true
-            };
-
-            worker.DoWork += this.BackgroundExtractor_DoWork;
-            worker.RunWorkerCompleted += this.BackgroundExtractor_RunWorkerCompleted;
-
-            FolderBrowserDialog fldDialog = new FolderBrowserDialog
-            {
-                Description = "Select folder to extract to...",
-                ShowNewFolderButton = true
-            };
-
-            if (fldDialog.ShowDialog() == DialogResult.OK)
-            {
-                worker.RunWorkerAsync(fldDialog);
-                
-                this.extractionProgress.Show();
-            }
-
-            this.Enabled = false;
-        }
-
-        private void BackgroundExtractor_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            this.Enabled = true;
-            this.extractionProgress.Hide();
-        }
-
-        private void BackgroundExtractor_DoWork(object sender, DoWorkEventArgs e)
-        {
-            try
-            {
-                FolderBrowserDialog fldDialog = e.Argument as FolderBrowserDialog;
-
-                switch (this.currentArchiveType)
-                {
-                    case ArchiveType.Rar:
-                        {
-                            RarArchive rar = RarArchive.Open(new FileInfo(this.currentArchive));
-
-                            int fileCount = 0;
-                            foreach (IEntry rarArchiveEntry in rar.Entries)
-                            {
-                                if (!rarArchiveEntry.IsDirectory)
-                                {
-                                    fileCount++;
-                                }
-                            }
-
-                            if (fldDialog != null)
-                            {
-                                this.extractionProgress.FileCount = fileCount;
-                                this.extractionProgress.ExtractionLocation = fldDialog.SelectedPath;
-
-                                foreach (IEntry rarArchiveEntry in rar.Entries)
-                                {
-                                    if (rarArchiveEntry.IsDirectory)
-                                    {
-                                        this.extractionProgress.CurrentProcess = $"Creating folder {Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key)}...";
-                                        Directory.CreateDirectory(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
-                                    }
-                                }
-
-                                foreach (IArchiveEntry rarArchiveEntry in rar.Entries)
-                                {
-                                    if (!rarArchiveEntry.IsDirectory)
-                                    {
-                                        this.extractionProgress.CurrentProcess = $"Writing file {Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key)}...";
-                                        this.extractionProgress.CurrentFile = new FileInfo(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
-                                        this.extractionProgress.ExpectedFileSize = rarArchiveEntry.Size;
-                                        rarArchiveEntry.WriteToFile(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                throw new NullReferenceException("The value for \"fldDialog\" was not intialized.");
-                            }
-                        }
-                        break;
-                    case ArchiveType.Zip:
-                    {
-                            ZipArchive archive = ZipArchive.Open(new FileInfo(this.currentArchive));
-
-                            int fileCount = 0;
-                            foreach (IEntry rarArchiveEntry in archive.Entries)
-                            {
-                                if (!rarArchiveEntry.IsDirectory)
-                                {
-                                    fileCount++;
-                                }
-                            }
-
-                            if (fldDialog != null)
-                            {
-                                this.extractionProgress.FileCount = fileCount;
-                                this.extractionProgress.ExtractionLocation = fldDialog.SelectedPath;
-
-                                foreach (IEntry rarArchiveEntry in archive.Entries)
-                                {
-                                    if (rarArchiveEntry.IsDirectory)
-                                    {
-                                        this.extractionProgress.CurrentProcess = $"Creating folder {Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key)}...";
-                                        Directory.CreateDirectory(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
-                                    }
-                                }
-
-                                foreach (IArchiveEntry rarArchiveEntry in archive.Entries)
-                                {
-                                    if (!rarArchiveEntry.IsDirectory)
-                                    {
-                                        this.extractionProgress.CurrentProcess = $"Writing file {Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key)}...";
-                                        this.extractionProgress.CurrentFile = new FileInfo(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
-                                        this.extractionProgress.ExpectedFileSize = rarArchiveEntry.Size;
-                                        rarArchiveEntry.WriteToFile(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                throw new NullReferenceException("The value for \"fldDialog\" was not intialized.");
-                            }
-                        }
-                        break;
-                    case ArchiveType.Tar:
-                        break;
-                    case ArchiveType.SevenZip:
-                    {
-                            SevenZipArchive archive = SevenZipArchive.Open(new FileInfo(this.currentArchive));
-
-                            int fileCount = 0;
-                            foreach (IEntry rarArchiveEntry in archive.Entries)
-                            {
-                                if (!rarArchiveEntry.IsDirectory)
-                                {
-                                    fileCount++;
-                                }
-                            }
-
-                            if (fldDialog != null)
-                            {
-                                this.extractionProgress.FileCount = fileCount;
-                                this.extractionProgress.ExtractionLocation = fldDialog.SelectedPath;
-
-                                foreach (IEntry rarArchiveEntry in archive.Entries)
-                                {
-                                    if (rarArchiveEntry.IsDirectory)
-                                    {
-                                        this.extractionProgress.CurrentProcess = $"Creating folder {Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key)}...";
-                                        Directory.CreateDirectory(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
-                                    }
-                                }
-
-                                foreach (IArchiveEntry rarArchiveEntry in archive.Entries)
-                                {
-                                    if (!rarArchiveEntry.IsDirectory)
-                                    {
-                                        this.extractionProgress.CurrentProcess = $"Writing file {Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key)}...";
-                                        this.extractionProgress.CurrentFile = new FileInfo(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
-                                        this.extractionProgress.ExpectedFileSize = rarArchiveEntry.Size;
-                                        rarArchiveEntry.WriteToFile(Path.Combine(fldDialog.SelectedPath, rarArchiveEntry.Key));
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                throw new NullReferenceException("The value for \"fldDialog\" was not intialized.");
-                            }
-                        }
-                        break;
-                    case ArchiveType.GZip:
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
-            }
-            catch (Exception exception)
-            {
-                Console.WriteLine(exception);
-
-                if (!ErrorHandler.WriteLogFile())
-                {
-                    MessageBox.Show("Failed to create log file!", string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-                else
-                {
-                    MessageBox.Show("Generic error caught! Please create an issue on the GitHub repo with the log file linked.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
-        }
-
-        private enum ArchiveType
-        {
-            Rar,
-            Zip,
-            Tar,
-            SevenZip,
-            GZip,
-            Unknown
         }
     }
 }
