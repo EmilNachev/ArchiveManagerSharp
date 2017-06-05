@@ -5,9 +5,9 @@ Aims to be a program that can manage as many types of archives as possible
 
 | Format | View/Compress/Decompress |
 | ------ | ------------------- |
-| RAR | Decompress |
-| ZIP | Decompress |
-| 7ZIP | Decompress |
+| RAR | View/Decompress |
+| ZIP | View/Decompress |
+| 7ZIP | View/Decompress |
 
 # Planned Support
 
