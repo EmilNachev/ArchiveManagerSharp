@@ -15,12 +15,13 @@ Aims to be a program that can manage as many types of archives as possible
 | ------ | ------------------- | ----- |
 | RAR | Decompress | Compressing is against the [RAR License](http://www.rarlab.com/license.htm) |
 | Zip | Both | Compressing is WIP |
-| Tar | Both | Compressing is WIP |
-| 7zip | Both | Preliminary extraction support added |
+| Tar | Both | Preliminary extraction support added |
+| 7zip | Both | Compressing is WIP |
 | Gzip | Both | Preliminary extraction support added |
 
 If any formats are requested, create an issue and I will do my best to add them.
 
-# Compression Library Used
+# Libraries
 
 SharpCompress - https://github.com/adamhathcock/sharpcompress
+MimeTypeMap - https://github.com/samuelneff/MimeTypeMap
