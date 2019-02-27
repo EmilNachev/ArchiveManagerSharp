@@ -1,0 +1,57 @@
+    public static class UniversalArchiver
+    {
+        public static void ExtractAll(string archiveFilePath, string destinationFolder, string password)
+        {
+            Directory.CreateDirectory(destinationFolder);
+
+            var fileInfo = new FileInfo(archiveFilePath);
+            var readerOptions = new ReaderOptions { Password = password };
+            var extractionOptions = new ExtractionOptions { ExtractFullPath = true, Overwrite = true, PreserveAttributes = false, PreserveFileTime = true };
+            var archiveType = GetArchiveType(Path.GetExtension(archiveFilePath));
+
+            IArchive archive;
+            switch (archiveType)
+            {
+                case ArchiveType.Rar:
+                    archive = RarArchive.Open(fileInfo, readerOptions);
+                    break;
+                case ArchiveType.Zip:
+                    archive = ZipArchive.Open(fileInfo, readerOptions);
+                    break;
+                case ArchiveType.Tar:
+                    archive = TarArchive.Open(fileInfo, readerOptions);
+                    break;
+                case ArchiveType.SevenZip:
+                    archive = SevenZipArchive.Open(fileInfo, readerOptions);
+                    break;
+                case ArchiveType.GZip:
+                    archive = GZipArchive.Open(fileInfo, readerOptions);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(archiveType), archiveType, null);
+            }
+
+            archive.WriteToDirectory(destinationFolder, extractionOptions);
+            archive.Dispose();
+        }
+
+        private static ArchiveType GetArchiveType(string extension)
+        {
+            switch (extension.Replace(".", string.Empty).ToLowerInvariant())
+            {
+                case "rar":
+                    return ArchiveType.Rar;
+                case "zip":
+                case "zipx":
+                    return ArchiveType.Zip;
+                case "tar":
+                    return ArchiveType.Tar;
+                case "7z":
+                    return ArchiveType.SevenZip;
+                case "gz":
+                    return ArchiveType.GZip;
+                default:
+                    throw new ArchiveException("Unknown file type!");
+            }
+        }
+    }
